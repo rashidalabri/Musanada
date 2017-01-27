@@ -1,0 +1,87 @@
+body {
+    padding-top: 40px;
+}
+
+/* Footer */
+.footer {
+    margin-top: 50px;
+}
+
+.footer span {
+}
+
+.footer i {
+    color: firebrick;
+}
+
+/* Home page */
+
+.jumbotron-home {
+    padding-bottom: 25px;
+    margin-bottom: 10px;
+    height: auto;
+    color: white;
+    background: linear-gradient( rgba(0, 0, 0, 0.75), rgba(0, 0, 0, 0.75) ), url('/assets/img/oman-pescatori.jpg') no-repeat center center;
+    background-size: cover;
+}
+
+.jumbotron h2 {
+    font-weight: 400;
+}
+
+.jumbotron p {
+    font-size: 20px;
+    font-weight: 300;
+}
+
+#start-lending {
+    font-weight: 700;
+}
+
+.stats {
+    margin: 25px 0;
+    background-color: #008cba;
+}
+
+.stats .box div {
+    border: 3px dashed #9adeff;
+    margin: 30px 0;
+}
+
+.stats h1 {
+    color: white;
+    font-weight: 700;
+}
+
+.stats p {
+    font-weight: 700;
+    color: #00ddff;
+}
+
+/* About Us page */
+
+
+.jumbotron-about {
+    padding-bottom: 250px;
+    margin-bottom: 10px;
+    height: auto;
+    color: white;
+    background: linear-gradient( rgba(0, 0, 0, 0.75), rgba(0, 0, 0, 0.75) ), url('images/ruwi_cbd.jpg') no-repeat center center;
+    background-size: cover;
+}
+
+.jumbotron-about h2 {
+    margin-top: 10%;
+    font-weight: 700;
+    font-size: 50px;
+}
+
+.about-box i {
+    -webkit-text-stroke-width: 4px;
+    -webkit-text-stroke-color: #43ac6a;
+    margin-top: 50px;
+}
+
+.about-box h3 {
+    font-weight: 700;
+}
