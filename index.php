@@ -7,16 +7,52 @@
  */
 
 require_once('includes/config.php');
-require_once('includes/db.php');
 require_once('includes/common.php');
+require_once('includes/db.php');
 
 $alerts = array();
+
+
+// Get featured loans from database
+$featured_loans = [];
+try {
+    $stmt = $db->prepare('SELECT * FROM loans WHERE ended = 0 ORDER BY amount_raised DESC LIMIT 4');
+    $stmt->execute();
+    $featured_loans = $stmt->fetchAll();
+} catch (PDOException $e) {
+    handleSqlErrors($e);
+}
+
+$featured_loans_html = '';
+foreach ($featured_loans as $loan) {
+    $user = getUserDetails($loan['user_id']);
+    $raised_percent = ($loan['amount_raised'] / $loan['amount']) * 100;
+    $days_left = ceil(($loan['end_date'] - time()) / (24 * 60 * 60));
+    $featured_loans_html .= <<<LOAN
+<div class="col-md-3 col-sm-6">
+    <img class="img-responsive" src="/uploads/{$loan['image']}">
+    <div class="panel panel-default">
+        <div class="panel-body">
+            <p class="text-primary"><b>{$user['first_name']} {$user['last_name']}</b> <span class="label label-primary pull-right">{$days_left} days left</span></p>
+            <p>{$loan['short_description']}</p>
+            <div class="progress progress-striped active">
+                <div class="progress-bar" style="width: {$raised_percent}%"></div>
+            </div>
+            <div class="btn-group btn-group-justified">
+                <a href="/lend.php?id={$loan['slug']}" class="btn btn-success">Lend</a>
+                <a href="/loan.php?id={$loan['slug']}" class="btn btn-success">Learn More</a>
+            </div>
+        </div>
+    </div>
+</div>
+LOAN;
+}
 
 if (isset($_GET['logout'])) {
     $alerts[] = ['text' => 'You have been logged out.', 'type' => 'success'];
 }
 ?>
-<?= get_head('Home') ?>
+<?= getHead('Home') ?>
 <div class="jumbotron jumbotron-home">
     <div class="container">
         <h2>Eradicating Unemployment, One Loan At A Time.</h2>
@@ -28,101 +64,24 @@ if (isset($_GET['logout'])) {
 </div>
 
 <div class="container">
-    <?= generate_alerts_html($alerts) ?>
+    <?= generateAlertsHtml($alerts) ?>
     <h1 id="start-lending" class="text-center">Start Lending</h1>
 
     <hr>
 
     <div class="row">
-
-        <div class="col-md-3 col-sm-6">
-            <img class="img-responsive" src="/uploads/borrower-1.jpg">
-            <div class="panel panel-default">
-                <div class="panel-body">
-                    <p class="text-primary"><b>Ahmed Al Marzoqi</b></p>
-                    <p>A loan of 600 OMR helps Ahmed start his new company Dishdasha - an online male clothing line that
-                        revolutionizes how Omanis tailor their dishdashas.</p>
-                    <div class="progress progress-striped active">
-                        <div class="progress-bar" style="width: 45%"></div>
-                    </div>
-                    <div class="btn-group btn-group-justified">
-                        <a href="#" class="btn btn-success" data-toggle="modal" data-target="#lendModal">Lend</a>
-                        <a href="#" class="btn btn-success" data-toggle="modal" data-target="#learnMoreModal">Learn
-                            more</a>
-                    </div>
-                </div>
-            </div>
-        </div>
-
+        <?= $featured_loans_html ?>
     </div>
-
-    <!-- Modal -->
-    <div id="lendModal" class="modal fade" role="dialog">
-        <div class="modal-dialog">
-
-            <!-- Modal content-->
-            <div class="modal-content">
-                <div class="modal-header">
-                    <button type="button" class="close" data-dismiss="modal">&times;</button>
-                    <h4 class="modal-title">Choose Payment Method</h4>
-                </div>
-                <div class="modal-body">
-                    <div class="alert alert-dismissible alert-warning">
-                        <button type="button" class="close" data-dismiss="alert">&times;</button>
-                        <p><b>Oh noes!</b> The site administrator has disabled payments. Maybe check next time?</p>
-                    </div>
-                    <div class="btn-group btn-group-justified">
-                        <a href="#" class="btn btn-primary disabled" data-toggle="modal" data-target="#lendModal"><i
-                                    class="fa fa-paypal" aria-hidden="true"></i>&nbsp;&nbsp;Paypal</a>
-                        <a href="#" class="btn btn-success disabled"><i class="fa fa-money" aria-hidden="true"></i>&nbsp;&nbsp;Send
-                            check by mail</a>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
-                </div>
-            </div>
-
-        </div>
-    </div>
-
-    <!-- Modal -->
-    <div id="learnMoreModal" class="modal fade" role="dialog">
-        <div class="modal-dialog">
-
-            <!-- Modal content-->
-            <div class="modal-content">
-                <div class="modal-header">
-                    <button type="button" class="close" data-dismiss="modal">&times;</button>
-                    <h4 class="modal-title">Under Construction</h4>
-                </div>
-                <div class="modal-body text-center">
-                    <h2>
-                        <i class="fa fa-gear fa-spin fa-2x" aria-hidden="true"></i>
-                        <i class="fa fa-gear fa-spin fa-4x" aria-hidden="true"></i>
-                    </h2>
-                    <h2>This page is under <i>heavy</i> construction.</h2>
-                    <p style="font-size: 7px">You really do have sharp eyes.</p>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
-                </div>
-            </div>
-
-        </div>
-    </div>
-
-    <br>
 
     <div class="row">
         <div class="col-md-12 text-center">
-            <a href="#" class="btn btn-default">View more</a>
+            <a href="loans.php" class="btn btn-default">View more</a>
         </div>
     </div>
 </div>
 
 
-<div class="container-fluid stats">
+<!--<div class="container-fluid stats">
     <div class="container">
         <div class="row">
             <div class="col-md-4 col-sm-4 box text-center">
@@ -147,5 +106,5 @@ if (isset($_GET['logout'])) {
             </div>
         </div>
     </div>
-</div>
-<?= get_foot() ?>
+</div>-->
+<?= getFoot() ?>

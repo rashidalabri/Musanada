@@ -7,8 +7,8 @@
  */
 
 require_once('../includes/config.php');
-require_once('../includes/db.php');
 require_once('../includes/common.php');
+require_once('../includes/db.php');
 require_once('../libraries/securimage/securimage.php');
 
 $email_address = '';
@@ -20,13 +20,13 @@ if ($_POST) {
 
     $securimage = new Securimage();
 
-    if ($securimage->check($_POST['captcha_code']) == false) {
+    if ($securimage->check(trim($_POST['captcha_code'])) == false) {
         $alerts[] = ['text' => 'The captcha you entered is incorrect.', 'type' => 'danger'];
     }
 
     // Store POST details
-    $email_address = $_POST['email_address'];
-    $raw_password = $_POST['password'];
+    $email_address = trim($_POST['email_address']);
+    $raw_password = trim($_POST['password']);
 
     // Validate email address
     if (!filter_var($email_address, FILTER_VALIDATE_EMAIL) || strlen($email_address) > 255 || empty($email_address)) {
@@ -61,7 +61,7 @@ if ($_POST) {
             }
 
         } catch (PDOException $e) {
-            handle_sql_errors($e);
+            handleSqlErrors($e);
         }
     }
 }
@@ -70,19 +70,24 @@ if (isset($_GET['register'])) {
     $alerts[] = ['text' => 'You have been successfully registered.', 'type' => 'success'];
 }
 ?>
-<?= get_head('Login') ?>
-    <br><br>
+<?= getHead('Login') ?>
+    <br>
     <div class="container">
+        <div class="text-center">
+            <h3>Don't have an account yet?</h3>
+            <a href="/user/register.php" class="btn btn-warning btn-sm">Register an account</a>
+        </div>
+        <br>
         <div class="well col-md-6 col-md-offset-3">
             <form class="form-horizontal" method="post" action="<?= $_SERVER['PHP_SELF'] ?>">
                 <fieldset>
                     <legend>Log into your account</legend>
-                    <?= generate_alerts_html($alerts) ?>
+                    <?= generateAlertsHtml($alerts) ?>
                     <div class="form-group">
                         <label for="inputEmail" class="col-lg-2 control-label">Email</label>
                         <div class="col-lg-10">
                             <input type="text" class="form-control" id="inputEmail" name="email_address"
-                                   value="<?= safe_output($email_address) ?>">
+                                   value="<?= safeOutput($email_address) ?>">
                         </div>
                     </div>
                     <div class="form-group">
@@ -112,4 +117,4 @@ if (isset($_GET['register'])) {
             </form>
         </div>
     </div>
-<?= get_foot() ?>
+<?= getFoot() ?>

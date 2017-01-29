@@ -7,8 +7,8 @@
  */
 
 require_once('../includes/config.php');
-require_once('../includes/db.php');
 require_once('../includes/common.php');
+require_once('../includes/db.php');
 require_once('../libraries/securimage/securimage.php');
 
 $email_address = '';
@@ -21,11 +21,11 @@ $alerts = array();
 if ($_POST) {
 
     // Store POST details
-    $email_address = $_POST['email_address'];
-    $raw_password = $_POST['password'];
-    $first_name = $_POST['first_name'];
-    $last_name = $_POST['last_name'];
-    $captcha_code = $_POST['captcha_code'];
+    $email_address = trim($_POST['email_address']);
+    $raw_password = trim($_POST['password']);
+    $first_name = trim($_POST['first_name']);
+    $last_name = trim($_POST['last_name']);
+    $captcha_code = trim($_POST['captcha_code']);
 
     // Validate captcha
     $securimage = new Securimage();
@@ -46,7 +46,7 @@ if ($_POST) {
                 $alerts[] = ['text' => 'The email address is already used.', 'type' => 'danger'];
             }
         } catch (PDOException $e) {
-            handle_sql_errors($e);
+            handleSqlErrors($e);
         }
     }
 
@@ -71,13 +71,13 @@ if ($_POST) {
     }
 
 
-    if (count($alerts) == 0) {
+    if (count($alerts) == 0 && isset($password_hash)) {
         // Insert data
         try {
             $stmt = $db->prepare('INSERT INTO users (email_address, password_hash, first_name, last_name) VALUES (?, ?, ?, ?)');
-            $stmt->execute([$email_address, $password_hash, $first_name, $last_name]);
+            $stmt->execute([$email_address, $password_hash, ucwords($first_name), ucwords($last_name)]);
         } catch (PDOException $e) {
-            handle_sql_errors($e);
+            handleSqlErrors($e);
         }
 
         // Direct to login page
@@ -85,33 +85,33 @@ if ($_POST) {
     }
 }
 ?>
-<?= get_head('Register') ?>
+<?= getHead('Register') ?>
 <br><br>
 <div class="container">
     <div class="well col-md-6 col-md-offset-3">
         <form class="form-horizontal" method="post" action="<?= $_SERVER['PHP_SELF'] ?>">
             <fieldset>
                 <legend>Register an account</legend>
-                <?= generate_alerts_html($alerts) ?>
+                <?= generateAlertsHtml($alerts) ?>
                 <div class="form-group">
                     <label for="inputFirstName" class="col-lg-2 control-label">First name</label>
                     <div class="col-lg-10">
                         <input type="text" class="form-control" id="inputFirstName" name="first_name"
-                               value="<?= safe_output($first_name) ?>">
+                               value="<?= safeOutput($first_name) ?>">
                     </div>
                 </div>
                 <div class="form-group">
                     <label for="inputLastName" class="col-lg-2 control-label">Last name</label>
                     <div class="col-lg-10">
                         <input type="text" class="form-control" id="inputLastName" name="last_name"
-                               value="<?= safe_output($last_name) ?>">
+                               value="<?= safeOutput($last_name) ?>">
                     </div>
                 </div>
                 <div class="form-group">
                     <label for="inputEmail" class="col-lg-2 control-label">Email</label>
                     <div class="col-lg-10">
                         <input type="text" class="form-control" id="inputEmail" name="email_address"
-                               value="<?= safe_output($email_address) ?>">
+                               value="<?= safeOutput($email_address) ?>">
                     </div>
                 </div>
                 <div class="form-group">
@@ -140,4 +140,4 @@ if ($_POST) {
         </form>
     </div>
 </div>
-<?= get_foot() ?>
+<?= getFoot() ?>

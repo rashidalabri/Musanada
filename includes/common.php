@@ -6,9 +6,13 @@
  * Time: 12:50 PM
  */
 
-function get_head($title, $append = '')
+function getHead($title, $append = '')
 {
     $site_name = SITE_NAME;
+    $button = '<li><div class="btn-nav"><a class="btn btn-success navbar-btn" href="/user/apply.php"><i class="fa fa-pencil-square-o" aria-hidden="true"></i> Apply for a loan</a></div></li>';
+    if (isset($_SESSION['user_id'])) {
+        $button = '<li><div class="btn-nav"><a class="btn btn-success navbar-btn" href="/user/index.php"><i class="fa fa-user" aria-hidden="true"></i> Dashboard</a></div></li>';
+    }
     $head = <<<HEAD
 <!DOCTYPE html>
 <html lang="en">
@@ -44,12 +48,11 @@ function get_head($title, $append = '')
         <div id="navbar" class="collapse navbar-collapse">
             <ul class="nav navbar-nav">
                 <li><a href="/"><i class="fa fa-home" aria-hidden="true"></i>&nbsp;&nbsp;Home</a></li>
-                <li><a href=""><i class="fa fa-users" aria-hidden="true"></i>&nbsp;&nbsp;About us</a></li>
-                <li><a href=""><i class="fa fa-cogs" aria-hidden="true"></i>&nbsp;&nbsp;How it Works</a></li>
-                <li><a href=""><i class="fa fa-comments" aria-hidden="true"></i>&nbsp;&nbsp;Contact Us</a></li>
+                <li><a href="/about.php"><i class="fa fa-users" aria-hidden="true"></i>&nbsp;&nbsp;About us</a></li>
+                <li><a href="/loans.php"><i class="fa fa-money" aria-hidden="true"></i>&nbsp;&nbsp; Loans</a></li>
             </ul>
             <ul class="nav nav-navbar navbar-right">
-                <li><div class="btn-nav"><a class="btn btn-success navbar-btn" href="#">Apply for a loan</a></div></li>
+                {$button}
             </ul>
         </div>
     </div>
@@ -58,7 +61,7 @@ HEAD;
     return $head;
 }
 
-function get_foot($append = '')
+function getFoot($append = '')
 {
     $site_name = SITE_NAME;
     $foot = <<<FOOT
@@ -80,7 +83,7 @@ FOOT;
     return $foot;
 }
 
-function handle_sql_errors(PDOException $e)
+function handleSqlErrors(PDOException $e)
 {
     $message = 'Error Handling Request.<br>';
     if (DEBUG) {
@@ -92,12 +95,12 @@ MESSAGE;
     exit();
 }
 
-function safe_output($string)
+function safeOutput($string)
 {
     return htmlspecialchars($string, ENT_QUOTES, 'UTF-8');
 }
 
-function generate_alerts_html(array $messages)
+function generateAlertsHtml(array $messages)
 {
     $errors_html = '';
     foreach ($messages as $message) {
@@ -116,14 +119,30 @@ function redirect($page)
     header('Location: ' . ROOT_URL . $page);
 }
 
-function require_logged_in()
+function requireLoggedIn()
 {
     if (!isset($_SESSION['user_id'])) {
         redirect('/user/login.php?notloggedin');
+        exit();
+    }
+
+    try {
+        $db = $GLOBALS['db'];
+        $stmt = $db->prepare('SELECT COUNT(*) FROM users WHERE id = ?');
+        $stmt->execute([$_SESSION['user_id']]);
+        $rows = $stmt->fetch(PDO::FETCH_NUM);
+        $count = $rows[0];
+        if ($count !== 1) {
+            unset($_SESSION['user_id']);
+            redirect('/user/login.php');
+            exit();
+        }
+    } catch (PDOException $e) {
+        handleSqlErrors($e);
     }
 }
 
-function get_user_details($user_id)
+function getUserDetails($user_id)
 {
     $user_details = false;
     try {
@@ -131,9 +150,134 @@ function get_user_details($user_id)
         $stmt = $db->prepare('SELECT * FROM users WHERE id = ?');
         $stmt->execute([$user_id]);
         $rows = $stmt->fetchAll();
+        if (count($rows) < 1) {
+            return false;
+        }
         $user_details = $rows[0];
     } catch (PDOException $e) {
-        handle_sql_errors($e);
+        handleSqlErrors($e);
     }
     return $user_details;
+}
+
+function getLoanDetails($loan_slug)
+{
+    $loan_details = false;
+    try {
+        $db = $GLOBALS['db'];
+        $stmt = $db->prepare('SELECT * FROM loans WHERE slug = ?');
+        $stmt->execute([$loan_slug]);
+        $rows = $stmt->fetchAll();
+        if (count($rows) == 1) {
+            $loan_details = $rows[0];
+        }
+    } catch (PDOException $e) {
+        handleSqlErrors($e);
+    }
+    return $loan_details;
+}
+
+
+function generateLoanSlug($length = 5)
+{
+    $characters = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    $charactersLength = strlen($characters);
+    do {
+
+        // Generate slug
+        $slug = '';
+        for ($i = 0; $i < $length; $i++) {
+            $slug .= $characters[rand(0, $charactersLength - 1)];
+        }
+
+        // Check if slug is unique
+        try {
+            $db = $GLOBALS['db'];
+            $stmt = $db->prepare('SELECT COUNT(*) FROM loans WHERE slug = ?');
+            $stmt->execute([$slug]);
+            $rows = $stmt->fetch(PDO::FETCH_NUM);
+            $count = $rows[0];
+            $unique = ($count == 0);
+        } catch (PDOException $e) {
+            handleSqlErrors($e);
+            break;
+        }
+    } while ($unique == false);
+
+    return $slug;
+}
+
+function sendMoney($from_user_id, $to_user_id, $amount)
+{
+    $db = $GLOBALS['db'];
+
+    // Check if from_user exits and has enough balance
+    $from_user = getUserDetails($from_user_id);
+    if ($from_user == false || $from_user['balance'] < $amount) {
+        return false;
+    }
+
+    // Check if to_user exists
+    $to_user = getUserDetails($to_user_id);
+    if ($to_user == false) {
+        return false;
+    }
+
+    // Create transaction
+    try {
+        $stmt = $db->prepare('INSERT INTO transactions (from_user_id, to_user_id, amount, time) VALUES (?, ?, ?, ?)');
+        $stmt->execute([$from_user_id, $to_user_id, $amount, time()]);
+    } catch (PDOException $e) {
+        handleSqlErrors($e);
+    }
+
+    // Update from_user balance
+    try {
+        $stmt = $db->prepare('UPDATE users SET balance = balance - ? WHERE id = ?');
+        $stmt->execute([$amount, $from_user_id]);
+    } catch (PDOException $e) {
+        handleSqlErrors($e);
+    }
+
+    // Update to_user balance
+    try {
+        $stmt = $db->prepare('UPDATE users SET balance = balance + ? WHERE id = ?');
+        $stmt->execute([$amount, $to_user_id]);
+    } catch (PDOException $e) {
+        handleSqlErrors($e);
+    }
+
+    return true;
+}
+
+function lend($loan_slug, $lender_id, $amount)
+{
+    $db = $GLOBALS['db'];
+
+    $loan = getLoanDetails($loan_slug);
+
+    if ($loan === false) {
+        redirect('/index.php?lend_error');
+    }
+
+    $lender = getUserDetails($lender_id);
+
+    try {
+        $stmt = $db->prepare('UPDATE loans SET amount_raised = amount_raised + ? WHERE id = ?');
+        $stmt->execute([$amount, $loan['id']]);
+    } catch (PDOException $e) {
+        handleSqlErrors($e);
+    }
+
+    sendMoney($lender_id, $loan['user_id'], $amount);
+
+    if (($amount + $loan['amount_raised']) >= $loan['amount']) {
+        try {
+            $stmt = $db->prepare('UPDATE loans SET ended = 1 WHERE id = ?');
+            $stmt->execute([$loan['id']]);
+        } catch (PDOException $e) {
+            handleSqlErrors($e);
+        }
+    }
+
 }
